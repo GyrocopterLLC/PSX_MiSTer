@@ -4,8 +4,8 @@ use IEEE.numeric_std.all;
 
 library mem;
 
-LIBRARY altera_mf;
-USE altera_mf.altera_mf_components.all; 
+-- LIBRARY altera_mf;
+-- USE altera_mf.altera_mf_components.all; 
 
 entity spu_ram is
    port 

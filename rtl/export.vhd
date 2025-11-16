@@ -9,7 +9,7 @@ use IEEE.numeric_std.all;
 package pexport is
 
    type tExportRegs is array(0 to 31) of unsigned(31 downto 0);
-   signal regs                   : tExportRegs;
+   -- signal regs                   : tExportRegs;
 
    type cpu_export_type is record
       regs           : tExportRegs;
