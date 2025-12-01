@@ -1090,26 +1090,35 @@ begin
                         cmdStop     <= '1';
                         
                      when x"09" => -- pause
-                        cmdAck      <= '1';
-                        cmdPending  <= '0';
-                        working     <= '1';
-                        workDelay   <= 7000 - 2;
-                        workCommand <= nextCmd;
-                        cmdResetXa  <= '1';
-                        if (driveState = DRIVE_READING or driveState = DRIVE_PLAYING) then
-                           -- todo: should this be swapped between single speed and double speed? DuckStation has double speed longer and psx spx doc has single speed being longer
-                           if (modeReg(7) = '1') then
-                              workDelay  <= 2157295 + driveDelay; -- value from psx spx doc
-                           else
-                              workDelay  <= 1066874 + driveDelay; -- value from psx spx doc
-                           end if;
-                        end if;
-                        if (driveState = DRIVE_SEEKLOGICAL or driveState = DRIVE_SEEKPHYSICAL or driveState = DRIVE_SEEKIMPLICIT) then
-                           -- todo: complete seek?
-                           stop_afterseek <= '1';
+						-- Reject PAUSE while still seeking (first sector not delivered)
+						if (driveState = DRIVE_SEEKLOGICAL or driveState = DRIVE_SEEKPHYSICAL or ((driveState = DRIVE_READING or driveState = DRIVE_PLAYING) and internalStatus(6) = '1')) then	  
+                           -- Return NOT_READY (0x80)
+						   cmdPending              <= '0';
+						   errorResponseCmd_new    <= '1';	
+						   errorResponseCmd_error  <= x"01"; -- STAT_ERROR
+                           errorResponseCmd_reason <= x"80"; -- NOT_READY
                         else
-                           drive_stop <= '1';
-                        end if;
+						   cmdAck      <= '1';
+                           cmdPending  <= '0';
+                           working     <= '1';
+                           workDelay   <= 7000 - 2;
+                           workCommand <= nextCmd;
+                           cmdResetXa  <= '1';
+                           if (driveState = DRIVE_READING or driveState = DRIVE_PLAYING) then
+                              -- todo: should this be swapped between single speed and double speed? DuckStation has double speed longer and psx spx doc has single speed being longer
+                              if (modeReg(7) = '1') then
+                                 workDelay  <= 2157295 + driveDelay; -- value from psx spx doc
+                              else
+                                 workDelay  <= 1066874 + driveDelay; -- value from psx spx doc
+                              end if;
+                           end if;
+                           if (driveState = DRIVE_SEEKLOGICAL or driveState = DRIVE_SEEKPHYSICAL or driveState = DRIVE_SEEKIMPLICIT) then
+                              -- todo: complete seek?
+                              stop_afterseek <= '1';
+                           else
+                              drive_stop <= '1';
+                           end if;
+					    end if;
                      
                      when x"0A" => -- reset
                         if (working = '1' and workCommand = x"0A") then
@@ -2097,6 +2106,11 @@ begin
             
             if (startReading = '1') then
                clearSectorBuffers <= '1';
+			   
+			   if (afterSeek = '0') then
+			      internalStatus(6) <= '1';  -- seeking until first sector arrives
+			   end if;
+															
                --todo: check for setLocActive needed when coming from readSN?
                if (driveState = DRIVE_SEEKLOGICAL or driveState = DRIVE_SEEKPHYSICAL or driveState = DRIVE_SEEKIMPLICIT) then
                   readAfterSeek     <= '1';
@@ -2507,24 +2521,24 @@ begin
                   -- synthesis translate_on
                   
                   readSubchannel <= '1';
-                  
+															
                   if (
-                      (libcryptKey(15) = '1' and (lastReadSector = 14105 or lastReadSector = 14110)) or
-                      (libcryptKey(14) = '1' and (lastReadSector = 14231 or lastReadSector = 14236)) or
-                      (libcryptKey(13) = '1' and (lastReadSector = 14485 or lastReadSector = 14490)) or
-                      (libcryptKey(12) = '1' and (lastReadSector = 14579 or lastReadSector = 14584)) or
-                      (libcryptKey(11) = '1' and (lastReadSector = 14649 or lastReadSector = 14654)) or
-                      (libcryptKey(10) = '1' and (lastReadSector = 14899 or lastReadSector = 14904)) or
-                      (libcryptKey(9)  = '1' and (lastReadSector = 15056 or lastReadSector = 15061)) or
-                      (libcryptKey(8)  = '1' and (lastReadSector = 15130 or lastReadSector = 15135)) or
-                      (libcryptKey(7)  = '1' and (lastReadSector = 15242 or lastReadSector = 15247)) or
-                      (libcryptKey(6)  = '1' and (lastReadSector = 15312 or lastReadSector = 15317)) or
-                      (libcryptKey(5)  = '1' and (lastReadSector = 15378 or lastReadSector = 15383)) or
-                      (libcryptKey(4)  = '1' and (lastReadSector = 15628 or lastReadSector = 15633)) or
-                      (libcryptKey(3)  = '1' and (lastReadSector = 15919 or lastReadSector = 15924)) or
-                      (libcryptKey(2)  = '1' and (lastReadSector = 16031 or lastReadSector = 16036)) or
-                      (libcryptKey(1)  = '1' and (lastReadSector = 16101 or lastReadSector = 16106)) or
-                      (libcryptKey(0)  = '1' and (lastReadSector = 16167 or lastReadSector = 16172))
+                      (libcryptKey(15) = '1' and ((lastReadSector + 2) = 14105 or (lastReadSector + 2) = 14110)) or
+                      (libcryptKey(14) = '1' and ((lastReadSector + 2) = 14231 or (lastReadSector + 2) = 14236)) or
+                      (libcryptKey(13) = '1' and ((lastReadSector + 2) = 14485 or (lastReadSector + 2) = 14490)) or
+                      (libcryptKey(12) = '1' and ((lastReadSector + 2) = 14579 or (lastReadSector + 2) = 14584)) or
+                      (libcryptKey(11) = '1' and ((lastReadSector + 2) = 14649 or (lastReadSector + 2) = 14654)) or
+                      (libcryptKey(10) = '1' and ((lastReadSector + 2) = 14899 or (lastReadSector + 2) = 14904)) or
+                      (libcryptKey(9)  = '1' and ((lastReadSector + 2) = 15056 or (lastReadSector + 2) = 15061)) or
+                      (libcryptKey(8)  = '1' and ((lastReadSector + 2) = 15130 or (lastReadSector + 2) = 15135)) or
+                      (libcryptKey(7)  = '1' and ((lastReadSector + 2) = 15242 or (lastReadSector + 2) = 15247)) or
+                      (libcryptKey(6)  = '1' and ((lastReadSector + 2) = 15312 or (lastReadSector + 2) = 15317)) or
+                      (libcryptKey(5)  = '1' and ((lastReadSector + 2) = 15378 or (lastReadSector + 2) = 15383)) or
+                      (libcryptKey(4)  = '1' and ((lastReadSector + 2) = 15628 or (lastReadSector + 2) = 15633)) or
+                      (libcryptKey(3)  = '1' and ((lastReadSector + 2) = 15919 or (lastReadSector + 2) = 15924)) or
+                      (libcryptKey(2)  = '1' and ((lastReadSector + 2) = 16031 or (lastReadSector + 2) = 16036)) or
+                      (libcryptKey(1)  = '1' and ((lastReadSector + 2) = 16101 or (lastReadSector + 2) = 16106)) or
+                      (libcryptKey(0)  = '1' and ((lastReadSector + 2) = 16167 or (lastReadSector + 2) = 16172))
                   ) then
                       readSubchannel <= '0';
                   end if;
@@ -2669,7 +2683,7 @@ begin
                   subchannelSector <= physicalLBA;
                   UpdateSubchannel <= '1';
                else
-                  subchannelSector <= lastReadSector;
+                  subchannelSector <= lastReadSector +2;
                end if;
             end if;
             
