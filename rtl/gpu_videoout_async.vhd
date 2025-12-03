@@ -425,7 +425,11 @@ begin
                         lineIn <= to_unsigned((vdispNew - vDisplayStart) * 2, 9);
                      end if;
                   else
-                     lineIn <= to_unsigned(vdispNew - vDisplayStart, 9);
+                     if vdispNew - vDisplayStart <= 0 then
+                        lineIn <= to_unsigned(0, 9);
+                     else
+                        lineIn <= to_unsigned(vdispNew - vDisplayStart, 9);
+                     end if;
                   end if;
                end if;
 
@@ -680,8 +684,11 @@ begin
                when WAITNEWLINE =>
                   videoout_out.hblank         <= '1';
                   videoout_reports.hblank_tmr <= '1';
-                  
-                  nextLineCalc := to_unsigned((lineMax - 1), 9) - lineIn;
+                  if lineMax = 0 then 
+                     nextLineCalc := to_unsigned(0, 9);
+                  else
+                     nextLineCalc := to_unsigned((lineMax - 1), 9) - lineIn;
+                  end if;
                   
                   if ((rotate180 = '1' and nextLineCalc /= videoout_request.lineDisp) or (rotate180 = '0' and lineIn /= videoout_request.lineDisp)) then
                      state <= WAITHBLANKEND;

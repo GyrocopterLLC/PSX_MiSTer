@@ -36,10 +36,11 @@ architecture rtl of dpram is
    shared variable ram : memory_t := (others => (others => '0'));
 
 begin
-
-   -- Port A
-   process(clock_a)
+   process(clock_a, clock_b)
    begin
+   -- Port A
+   -- process(clock_a)
+   -- begin
       if(rising_edge(clock_a)) then
          if (clken_a = '1') then
             if(wren_a = '1') then
@@ -48,11 +49,11 @@ begin
             q_a <= ram(to_integer(unsigned(address_a)));
          end if;
       end if;
-   end process;
+   -- end process;
 
    -- Port B
-   process(clock_b)
-   begin
+   -- process(clock_b)
+   -- begin
       if(rising_edge(clock_b)) then
          if (clken_b = '1') then
             if(wren_b = '1') then
@@ -104,7 +105,7 @@ architecture rtl of dpram_1clk is
    type memory_t is array(2**ADDR_WIDTH-1 downto 0) of word_t;
 
    -- Declare the RAM 
-   signal ram : memory_t := (others => (others => '0'));
+   signal ram_1clk : memory_t := (others => (others => '0'));
 
 begin
 
@@ -113,16 +114,16 @@ begin
       if(rising_edge(clock)) then
          if (clken_a = '1') then
             if(wren_a = '1') then
-               ram(to_integer(unsigned(address_a))) <= data_a;
+               ram_1clk(to_integer(unsigned(address_a))) <= data_a;
             end if;
-            q_a <= ram(to_integer(unsigned(address_a)));
+            q_a <= ram_1clk(to_integer(unsigned(address_a)));
          end if;
          
          if (clken_b = '1') then
             if(wren_b = '1') then
-               ram(to_integer(unsigned(address_b))) <= data_b;
+               ram_1clk(to_integer(unsigned(address_b))) <= data_b;
             end if;
-            q_b <= ram(to_integer(unsigned(address_b)));
+            q_b <= ram_1clk(to_integer(unsigned(address_b)));
          end if;
       end if;
    end process;
@@ -172,34 +173,36 @@ architecture rtl of dpram_dif_A is
    type memory_t is array(2**addr_width_b-1 downto 0) of word_t;
 
    -- Declare the RAM 
-   shared variable ram : memory_t := (others => (others => '0'));
+   shared variable ram_dif_A : memory_t := (others => (others => '0'));
 
 begin
 
-   -- Port A
-   process(clock_a)
+   process(clock_a, clock_b)
    begin
+   -- Port A
+   -- process(clock_a)
+   -- begin
       if(rising_edge(clock_a)) then
          if (clken_a = '1') then
             for i in 0 to RATIO - 1 loop
                if(wren_a = '1') then
-                  ram(to_integer(unsigned(address_a)) * RATIO + i) := data_a(((i * data_width_b) + (data_width_b - 1)) downto (i *data_width_b));
+                  ram_dif_A(to_integer(unsigned(address_a)) * RATIO + i) := data_a(((i * data_width_b) + (data_width_b - 1)) downto (i *data_width_b));
                end if;
-               q_a(((i * data_width_b) + (data_width_b - 1)) downto (i *data_width_b)) <= ram(to_integer(unsigned(address_a)) * RATIO + i);
+               q_a(((i * data_width_b) + (data_width_b - 1)) downto (i *data_width_b)) <= ram_dif_A(to_integer(unsigned(address_a)) * RATIO + i);
             end loop;
          end if;
       end if;
-   end process;
+   -- end process;
 
    -- Port B
-   process(clock_b)
-   begin
+   -- process(clock_b)
+   -- begin
       if(rising_edge(clock_b)) then
          if (clken_b = '1') then
             if(wren_b = '1') then
-               ram(to_integer(unsigned(address_b))) := data_b;
+               ram_dif_A(to_integer(unsigned(address_b))) := data_b;
             end if;
-            q_b <= ram(to_integer(unsigned(address_b)));
+            q_b <= ram_dif_A(to_integer(unsigned(address_b)));
          end if;
       end if;
    end process;
@@ -249,33 +252,35 @@ architecture rtl of dpram_dif_b is
    type memory_t is array(2**addr_width_a-1 downto 0) of word_t;
 
    -- Declare the RAM 
-   shared variable ram : memory_t := (others => (others => '0'));
+   shared variable ram_dif_b : memory_t := (others => (others => '0'));
 
 begin
 
-   -- Port A
-   process(clock_a)
+   process(clock_a, clock_b)
    begin
+   -- Port A
+   -- process(clock_a)
+   -- begin
       if(rising_edge(clock_a)) then
          if (clken_a = '1') then
             if(wren_a = '1') then
-               ram(to_integer(unsigned(address_a))) := data_a;
+               ram_dif_b(to_integer(unsigned(address_a))) := data_a;
             end if;
-            q_a <= ram(to_integer(unsigned(address_a)));
+            q_a <= ram_dif_b(to_integer(unsigned(address_a)));
          end if;
       end if;
-   end process;
+   -- end process;
 
    -- Port B
-   process(clock_b)
-   begin
+   -- process(clock_b)
+   -- begin
       if(rising_edge(clock_b)) then
          if (clken_b = '1') then
             for i in 0 to RATIO - 1 loop
                if(wren_b = '1') then
-                     ram(to_integer(unsigned(address_b)) * RATIO + i) := data_b(((i * data_width_a) + (data_width_a - 1)) downto (i *data_width_a));
+                     ram_dif_b(to_integer(unsigned(address_b)) * RATIO + i) := data_b(((i * data_width_a) + (data_width_a - 1)) downto (i *data_width_a));
                end if;
-               q_b(((i * data_width_a) + (data_width_a - 1)) downto (i *data_width_a)) <= ram(to_integer(unsigned(address_b)) * RATIO + i);
+               q_b(((i * data_width_a) + (data_width_a - 1)) downto (i *data_width_a)) <= ram_dif_b(to_integer(unsigned(address_b)) * RATIO + i);
             end loop;
          end if;
       end if;

@@ -34,12 +34,19 @@ entity gpu_poly is
       drawModeNew          : out std_logic := '0';
       drawmode_dithering   : in  std_logic := '0';
       
-      div1                 : inout div_type; 
-      div2                 : inout div_type; 
-      div3                 : inout div_type; 
-      div4                 : inout div_type; 
-      div5                 : inout div_type; 
-      div6                 : inout div_type; 
+      div1_cmd             : out div_type_cmd; 
+      div2_cmd             : out div_type_cmd; 
+      div3_cmd             : out div_type_cmd; 
+      div4_cmd             : out div_type_cmd; 
+      div5_cmd             : out div_type_cmd; 
+      div6_cmd             : out div_type_cmd; 
+
+      div1_res             : in div_type_result; 
+      div2_res             : in div_type_result; 
+      div3_res             : in div_type_result; 
+      div4_res             : in div_type_result; 
+      div5_res             : in div_type_result; 
+      div6_res             : in div_type_result; 
       
       fifoOut_idle         : in  std_logic;
       pipeline_busy        : in  std_logic;
@@ -416,28 +423,28 @@ begin
             pipeline_uAcc        <= (others => '0');
             pipeline_vAcc        <= (others => '0');
             
-            div1.start           <= '0';
-            div2.start           <= '0';
-            div3.start           <= '0';
-            div4.start           <= '0';
-            div5.start           <= '0';
-            div6.start           <= '0';
+            div1_cmd.start           <= '0';
+            div2_cmd.start           <= '0';
+            div3_cmd.start           <= '0';
+            div4_cmd.start           <= '0';
+            div5_cmd.start           <= '0';
+            div6_cmd.start           <= '0';
             
             if (state /= CALCCOLOR2 and state /= CALCTEXTURE2) then
-               div1.dividend        <= (others => '0');
-               div2.dividend        <= (others => '0');
-               div3.dividend        <= (others => '0');
-               div4.dividend        <= (others => '0');
-               div5.dividend        <= (others => '0');
-               div6.dividend        <= (others => '0');
+               div1_cmd.dividend        <= (others => '0');
+               div2_cmd.dividend        <= (others => '0');
+               div3_cmd.dividend        <= (others => '0');
+               div4_cmd.dividend        <= (others => '0');
+               div5_cmd.dividend        <= (others => '0');
+               div6_cmd.dividend        <= (others => '0');
             end if;
             
-            div1.divisor         <= (others => '0');
-            div2.divisor         <= (others => '0');
-            div3.divisor         <= (others => '0');
-            div4.divisor         <= (others => '0');
-            div5.divisor         <= (others => '0');
-            div6.divisor         <= (others => '0');
+            div1_cmd.divisor         <= (others => '0');
+            div2_cmd.divisor         <= (others => '0');
+            div3_cmd.divisor         <= (others => '0');
+            div4_cmd.divisor         <= (others => '0');
+            div5_cmd.divisor         <= (others => '0');
+            div6_cmd.divisor         <= (others => '0');
             
             if (state /= IDLE) then
                drawTiming <= drawTiming + 1;
@@ -654,25 +661,25 @@ begin
                   dx1 := (to_signed(vt(2).x, 13) - to_signed(vt(0).x, 13)) & x"00000000";
                   if    (dx1 < 0) then dx1 := dx1 - (dy1 - 1); 
                   elsif (dx1 > 0) then dx1 := dx1 + (dy1 - 1); end if;
-                  div1.start     <= '1';
-                  div1.dividend  <= dx1;
-                  div1.divisor   <= x"000" & dy1;
+                  div1_cmd.start     <= '1';
+                  div1_cmd.dividend  <= dx1;
+                  div1_cmd.divisor   <= x"000" & dy1;
                   
                   dy2 := (to_signed(vt(1).y, 13) - to_signed(vt(0).y, 13));
                   dx2 := (to_signed(vt(1).x, 13) - to_signed(vt(0).x, 13)) & x"00000000";
                   if    (dx2 < 0) then dx2 := dx2 - (dy2 - 1); 
                   elsif (dx2 > 0) then dx2 := dx2 + (dy2 - 1); end if;
-                  div2.start     <= '1';
-                  div2.dividend  <= dx2;
-                  div2.divisor   <= x"000" & dy2;
+                  div2_cmd.start     <= '1';
+                  div2_cmd.dividend  <= dx2;
+                  div2_cmd.divisor   <= x"000" & dy2;
                   
                   dy3 := (to_signed(vt(2).y, 13) - to_signed(vt(1).y, 13));
                   dx3 := (to_signed(vt(2).x, 13) - to_signed(vt(1).x, 13)) & x"00000000";
                   if    (dx3 < 0) then dx3 := dx3 - (dy3 - 1); 
                   elsif (dx3 > 0) then dx3 := dx3 + (dy3 - 1); end if;
-                  div3.start     <= '1';
-                  div3.dividend  <= dx3;
-                  div3.divisor   <= x"000" & dy3;
+                  div3_cmd.start     <= '1';
+                  div3_cmd.dividend  <= dx3;
+                  div3_cmd.divisor   <= x"000" & dy3;
                   
                   -- culling of large polygons
                   cull := '0';
@@ -683,9 +690,9 @@ begin
                   if (abs(vt(2).y - vt(0).y) >= 16#200#) then cull := '1'; end if;
                   
                   if (cull = '1') then
-                     div1.start <= '0';
-                     div2.start <= '0';
-                     div3.start <= '0';
+                     div1_cmd.start <= '0';
+                     div2_cmd.start <= '0';
+                     div3_cmd.start <= '0';
                      if (nextQuad = '1') then 
                         state <= ISSUE;
                      else
@@ -700,21 +707,21 @@ begin
                   
                
                when CALCBOUNDARY2 =>
-                  baseStep     <= div1.quotient;
+                  baseStep     <= div1_res.quotient;
                   
                   rightFacing <= 0;
                   if (vt(1).y = vt(0).y) then
                      boundCoordUs <= (others => '0');
                      if (vt(1).x > vt(0).x) then rightFacing <= 1; end if;
                   else
-                     if (div2.quotient > div1.quotient) then rightFacing <= 1; end if;
-                     boundCoordUs <= div2.quotient;
+                     if (div2_res.quotient > div1_res.quotient) then rightFacing <= 1; end if;
+                     boundCoordUs <= div2_res.quotient;
                   end if;
                   
                   if (vt(2).y = vt(1).y) then
                      boundCoordLs <= (others => '0');
                   else
-                     boundCoordLs <= div3.quotient;
+                     boundCoordLs <= div3_res.quotient;
                   end if;
                   
                   vo_diff <= vt(vo).y - vt(0).y;
@@ -734,7 +741,7 @@ begin
                   diffY10 <= to_signed(vt(1).y - vt(0).y, 13);
                   diffY21 <= to_signed(vt(2).y - vt(1).y, 13);
                   
-                  if (div1.done = '1') then
+                  if (div1_res.done = '1') then
                      if (denom = 0) then
                         if (nextQuad = '1') then 
                            state <= ISSUE;
@@ -767,40 +774,40 @@ begin
                
                when CALCCOLOR2 =>
                   mulStep <= mulStep + 1;
-                  div1.divisor   <= to_signed(denom, 25);
-                  div2.divisor   <= to_signed(denom, 25);
-                  div3.divisor   <= to_signed(denom, 25);
-                  div4.divisor   <= to_signed(denom, 25);
-                  div5.divisor   <= to_signed(denom, 25);
-                  div6.divisor   <= to_signed(denom, 25);
+                  div1_cmd.divisor   <= to_signed(denom, 25);
+                  div2_cmd.divisor   <= to_signed(denom, 25);
+                  div3_cmd.divisor   <= to_signed(denom, 25);
+                  div4_cmd.divisor   <= to_signed(denom, 25);
+                  div5_cmd.divisor   <= to_signed(denom, 25);
+                  div6_cmd.divisor   <= to_signed(denom, 25);
                   case (mulStep) is
                      when 0 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2;
-                     when 1 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div1.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
-                     when 2 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div2.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";  
-                     when 3 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div3.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
-                     when 4 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div4.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
-                     when 5 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div5.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 1 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div1_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 2 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div2_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";  
+                     when 3 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div3_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 4 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div4_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 5 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div5_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
                      when 6 =>                                                             
-                        div6.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                        div6_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
                         state  <= CALCCOLOR3;
-                        div1.start     <= '1';
-                        div2.start     <= '1';
-                        div3.start     <= '1';
-                        div4.start     <= '1';
-                        div5.start     <= '1';
-                        div6.start     <= '1';
+                        div1_cmd.start     <= '1';
+                        div2_cmd.start     <= '1';
+                        div3_cmd.start     <= '1';
+                        div4_cmd.start     <= '1';
+                        div5_cmd.start     <= '1';
+                        div6_cmd.start     <= '1';
                      when others => null;
                   end case;
                
                when CALCCOLOR3 =>
-                  dxR <= unsigned(div1.quotient(31 downto 0));
-                  dyR <= unsigned(div2.quotient(31 downto 0));
-                  dxG <= unsigned(div3.quotient(31 downto 0));
-                  dyG <= unsigned(div4.quotient(31 downto 0));
-                  dxB <= unsigned(div5.quotient(31 downto 0));
-                  dyB <= unsigned(div6.quotient(31 downto 0));
+                  dxR <= unsigned(div1_res.quotient(31 downto 0));
+                  dyR <= unsigned(div2_res.quotient(31 downto 0));
+                  dxG <= unsigned(div3_res.quotient(31 downto 0));
+                  dyG <= unsigned(div4_res.quotient(31 downto 0));
+                  dxB <= unsigned(div5_res.quotient(31 downto 0));
+                  dyB <= unsigned(div6_res.quotient(31 downto 0));
                   mulStep <= 0;
-                  if (div1.done = '1') then
+                  if (div1_res.done = '1') then
                      state <= CALCCOLOR4;
                   end if;
                   
@@ -833,32 +840,32 @@ begin
                   
                when CALCTEXTURE2 =>
                   mulStep <= mulStep + 1;
-                  div1.divisor   <= to_signed(denom, 25);
-                  div2.divisor   <= to_signed(denom, 25);
-                  div3.divisor   <= to_signed(denom, 25);
-                  div4.divisor   <= to_signed(denom, 25);
+                  div1_cmd.divisor   <= to_signed(denom, 25);
+                  div2_cmd.divisor   <= to_signed(denom, 25);
+                  div3_cmd.divisor   <= to_signed(denom, 25);
+                  div4_cmd.divisor   <= to_signed(denom, 25);
                   case (mulStep) is
                      when 0 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2;
-                     when 1 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div1.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
-                     when 2 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div2.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";  
-                     when 3 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div3.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 1 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div1_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                     when 2 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div2_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";  
+                     when 3 => muldivResult1clk <= muldivResult1; muldivResult2clk <= muldivResult2; div3_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
                      when 4 =>                                                             
-                        div4.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
+                        div4_cmd.dividend <= resize(muldivResult1clk - muldivResult2clk, 33) & x"000";
                         state  <= CALCTEXTURE3;
-                        div1.start     <= '1';
-                        div2.start     <= '1';
-                        div3.start     <= '1';
-                        div4.start     <= '1';
+                        div1_cmd.start     <= '1';
+                        div2_cmd.start     <= '1';
+                        div3_cmd.start     <= '1';
+                        div4_cmd.start     <= '1';
                      when others => null;
                   end case;
                
                when CALCTEXTURE3 =>
-                  dxU <= unsigned(div1.quotient(31 downto 0));
-                  dyU <= unsigned(div2.quotient(31 downto 0));
-                  dxV <= unsigned(div3.quotient(31 downto 0));
-                  dyV <= unsigned(div4.quotient(31 downto 0));
+                  dxU <= unsigned(div1_res.quotient(31 downto 0));
+                  dyU <= unsigned(div2_res.quotient(31 downto 0));
+                  dxV <= unsigned(div3_res.quotient(31 downto 0));
+                  dyV <= unsigned(div4_res.quotient(31 downto 0));
                   mulStep <= 0;
-                  if (div1.done = '1') then
+                  if (div1_res.done = '1') then
                      state <= CALCTEXTURE4;
                   end if;
                   

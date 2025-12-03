@@ -4,15 +4,18 @@ use IEEE.numeric_std.all;
 
 package pGPU is
 
-   type div_type is record
+   type div_type_cmd is record
       start     : std_logic;
-      done      : std_logic;
       dividend  : signed(44 downto 0);
       divisor   : signed(24 downto 0);
+   end record;
+
+   type div_type_result is record
+      done      : std_logic;
       quotient  : signed(44 downto 0);
       remainder : signed(24 downto 0);
    end record;
-   
+
    type tvideoout_settings is record
       GPUSTAT_VerRes          : std_logic;
       GPUSTAT_PalVideoMode    : std_logic;

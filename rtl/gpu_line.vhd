@@ -27,12 +27,19 @@ entity gpu_line is
       drawingAreaTop       : in  unsigned(8 downto 0);
       drawingAreaBottom    : in  unsigned(8 downto 0);
       
-      div1                 : inout div_type; 
-      div2                 : inout div_type; 
-      div3                 : inout div_type; 
-      div4                 : inout div_type; 
-      div5                 : inout div_type; 
-      div6                 : inout div_type; 
+      div1_cmd             : out div_type_cmd; 
+      div2_cmd             : out div_type_cmd; 
+      div3_cmd             : out div_type_cmd; 
+      div4_cmd             : out div_type_cmd; 
+      div5_cmd             : out div_type_cmd; 
+      div6_cmd             : out div_type_cmd; 
+      
+      div1_res             : in div_type_result; 
+      div2_res             : in div_type_result; 
+      div3_res             : in div_type_result; 
+      div4_res             : in div_type_result; 
+      div5_res             : in div_type_result; 
+      div6_res             : in div_type_result; 
       
       fifoOut_idle         : in  std_logic;
       pipeline_busy        : in  std_logic;
@@ -351,26 +358,26 @@ begin
             pipeline_cg          <= (others => '0');
             pipeline_cb          <= (others => '0');
             
-            div1.start           <= '0';
-            div2.start           <= '0';
-            div3.start           <= '0';
-            div4.start           <= '0';
-            div5.start           <= '0';
-            div6.start           <= '0';
+            div1_cmd.start           <= '0';
+            div2_cmd.start           <= '0';
+            div3_cmd.start           <= '0';
+            div4_cmd.start           <= '0';
+            div5_cmd.start           <= '0';
+            div6_cmd.start           <= '0';
             
-            div1.dividend        <= (others => '0');
-            div2.dividend        <= (others => '0');
-            div3.dividend        <= (others => '0');
-            div4.dividend        <= (others => '0');
-            div5.dividend        <= (others => '0');
-            div6.dividend        <= (others => '0');
+            div1_cmd.dividend        <= (others => '0');
+            div2_cmd.dividend        <= (others => '0');
+            div3_cmd.dividend        <= (others => '0');
+            div4_cmd.dividend        <= (others => '0');
+            div5_cmd.dividend        <= (others => '0');
+            div6_cmd.dividend        <= (others => '0');
             
-            div1.divisor         <= (others => '0');
-            div2.divisor         <= (others => '0');
-            div3.divisor         <= (others => '0');
-            div4.divisor         <= (others => '0');
-            div5.divisor         <= (others => '0');
-            div6.divisor         <= (others => '0');
+            div1_cmd.divisor         <= (others => '0');
+            div2_cmd.divisor         <= (others => '0');
+            div3_cmd.divisor         <= (others => '0');
+            div4_cmd.divisor         <= (others => '0');
+            div5_cmd.divisor         <= (others => '0');
+            div6_cmd.divisor         <= (others => '0');
             
             case (procstate) is
             
@@ -435,40 +442,40 @@ begin
                   
                when PROCCALC2 =>   
                   procstate   <= PROCCALC3;
-                  div1.start     <= '1';
+                  div1_cmd.start     <= '1';
                   dx := proc_pos2x - proc_pos1x;
-                  if (dx < 0) then div1.dividend <= (resize(dx, 13) & x"00000000") - to_integer(points - 1);
-                  else             div1.dividend <= (resize(dx, 13) & x"00000000") + to_integer(points - 1); end if;
-                  div1.divisor   <= "000" & x"000" & signed(points);
+                  if (dx < 0) then div1_cmd.dividend <= (resize(dx, 13) & x"00000000") - to_integer(points - 1);
+                  else             div1_cmd.dividend <= (resize(dx, 13) & x"00000000") + to_integer(points - 1); end if;
+                  div1_cmd.divisor   <= "000" & x"000" & signed(points);
                   
-                  div2.start     <= '1';
+                  div2_cmd.start     <= '1';
                   dy := proc_pos2y - proc_pos1y;
-                  if (dy < 0) then div2.dividend <= (resize(dy, 13) & x"00000000") - to_integer(points - 1);
-                  else             div2.dividend <= (resize(dy, 13) & x"00000000") + to_integer(points - 1); end if;
-                  div2.divisor   <= "000" & x"000" & signed(points);
+                  if (dy < 0) then div2_cmd.dividend <= (resize(dy, 13) & x"00000000") - to_integer(points - 1);
+                  else             div2_cmd.dividend <= (resize(dy, 13) & x"00000000") + to_integer(points - 1); end if;
+                  div2_cmd.divisor   <= "000" & x"000" & signed(points);
                   
-                  div3.start     <= '1';
-                  div3.dividend  <= (('0' & x"000000" & signed(proc_color2(7 downto 0))) - (x"000000" & signed(proc_color1(7 downto 0)))) & x"000";
-                  div3.divisor   <= "000" & x"000" & signed(points);
+                  div3_cmd.start     <= '1';
+                  div3_cmd.dividend  <= (('0' & x"000000" & signed(proc_color2(7 downto 0))) - (x"000000" & signed(proc_color1(7 downto 0)))) & x"000";
+                  div3_cmd.divisor   <= "000" & x"000" & signed(points);
                   
-                  div4.start     <= '1';
-                  div4.dividend  <= (('0' & x"000000" & signed(proc_color2(15 downto 8))) - (x"000000" & signed(proc_color1(15 downto 8)))) & x"000";
-                  div4.divisor   <= "000" & x"000" & signed(points);
+                  div4_cmd.start     <= '1';
+                  div4_cmd.dividend  <= (('0' & x"000000" & signed(proc_color2(15 downto 8))) - (x"000000" & signed(proc_color1(15 downto 8)))) & x"000";
+                  div4_cmd.divisor   <= "000" & x"000" & signed(points);
                   
-                  div5.start     <= '1';
-                  div5.dividend  <= (('0' & x"000000" & signed(proc_color2(23 downto 16))) - (x"000000" & signed(proc_color1(23 downto 16)))) & x"000";
-                  div5.divisor   <= "000" & x"000" & signed(points);
+                  div5_cmd.start     <= '1';
+                  div5_cmd.dividend  <= (('0' & x"000000" & signed(proc_color2(23 downto 16))) - (x"000000" & signed(proc_color1(23 downto 16)))) & x"000";
+                  div5_cmd.divisor   <= "000" & x"000" & signed(points);
 
                   -- calculate pixels per line for transparency readback
-                  div6.start     <= '1';
-                  div6.dividend  <= "000" & x"00000000" & signed(points);
-                  if (dy = 0) then  div6.divisor   <= to_signed(1, div6.divisor'length);
-                  else              div6.divisor   <= "0" & x"000" & (abs(proc_pos2y - proc_pos1y)); end if;
+                  div6_cmd.start     <= '1';
+                  div6_cmd.dividend  <= "000" & x"00000000" & signed(points);
+                  if (dy = 0) then  div6_cmd.divisor   <= to_signed(1, div6_cmd.divisor'length);
+                  else              div6_cmd.divisor   <= "0" & x"000" & (abs(proc_pos2y - proc_pos1y)); end if;
                   
                when PROCCALC3 =>
                   pixelCnt  <= (others => '0');
                   workx <= resize(proc_pos1x & x"80000000", 45) - 1024;
-                  if (div2.quotient < 0) then 
+                  if (div2_res.quotient < 0) then 
                      worky <= resize(proc_pos1y & x"80000000", 45) - 1024;
                   else                        
                      worky <= resize(proc_pos1y & x"80000000", 45); 
@@ -476,19 +483,19 @@ begin
                   workr <= '0' & signed(proc_color1( 7 downto  0)) & x"800";
                   workg <= '0' & signed(proc_color1(15 downto  8)) & x"800";
                   workb <= '0' & signed(proc_color1(23 downto 16)) & x"800";
-                  if (div1.done = '1') then
+                  if (div1_res.done = '1') then
                      if (proc_transparency = '1' or DrawPixelsMask = '1') then
                         procstate <= PROCREQUESTFIRST;
                      else
                         procstate <= PROCPIXELS;
                      end if;
-                     stepDx   <= div1.quotient(43 downto 0);
-                     stepDy   <= div2.quotient(43 downto 0);
-                     stepDr   <= div3.quotient(19 downto 0);
-                     stepDg   <= div4.quotient(19 downto 0);
-                     stepDb   <= div5.quotient(19 downto 0);
+                     stepDx   <= div1_res.quotient(43 downto 0);
+                     stepDy   <= div2_res.quotient(43 downto 0);
+                     stepDr   <= div3_res.quotient(19 downto 0);
+                     stepDg   <= div4_res.quotient(19 downto 0);
+                     stepDb   <= div5_res.quotient(19 downto 0);
                      if (singlePixelLines = '0') then
-                        yPerLine <= resize(unsigned(div6.quotient(9 downto 0)),11) + 1;
+                        yPerLine <= resize(unsigned(div6_res.quotient(9 downto 0)),11) + 1;
                      end if;
                   end if;
                   

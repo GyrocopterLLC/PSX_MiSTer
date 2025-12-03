@@ -154,6 +154,8 @@ architecture arch of gpu_videoout is
 
    signal Gun1Y_screen        : unsigned(9 downto 0);
    signal Gun2Y_screen        : unsigned(9 downto 0);
+
+   signal xpos_expand         : integer range 0 to 2047;
    
 begin 
 
@@ -165,6 +167,8 @@ begin
    videoout_request_clkvid <= videoout_request_s  when (syncVideoOut = '1') else videoout_request_aa; 
 
    allowunpause            <= '1'                 when (syncVideoOut = '1') else allowunpause_a;
+
+   xpos_expand             <= videoout_request_clkvid.xpos;
 
    igpu_videoout_sync : entity work.gpu_videoout_sync
    port map
@@ -401,8 +405,8 @@ begin
       clk                    => clkvid,
       ce                     => videoout_out.ce,
       ena                    => fpscountOn,                    
-      i_pixel_out_x          => videoout_request_clkvid.xpos,
-      i_pixel_out_y          => to_integer(videoout_request_clkvid.lineDisp),
+      i_pixel_out_x          => xpos_expand, -- videoout_request_clkvid.xpos,
+      i_pixel_out_y          => to_integer('0' & videoout_request_clkvid.lineDisp),
       o_pixel_out_data       => overlay_fps_data,
       o_pixel_out_ena        => overlay_fps_ena,
       textstring             => fpstext
@@ -423,8 +427,8 @@ begin
       clk                    => clkvid,
       ce                     => videoout_out.ce,
       ena                    => cdSlow,                    
-      i_pixel_out_x          => videoout_request_clkvid.xpos,
-      i_pixel_out_y          => to_integer(videoout_request_clkvid.lineDisp),
+      i_pixel_out_x          => xpos_expand, -- videoout_request_clkvid.xpos,
+      i_pixel_out_y          => to_integer('0' & videoout_request_clkvid.lineDisp),
       o_pixel_out_data       => overlay_cd_data,
       o_pixel_out_ena        => overlay_cd_ena,
       textstring             => x"4344"
@@ -446,8 +450,8 @@ begin
       clk                    => clkvid,
       ce                     => videoout_out.ce,
       ena                    => errorOn and errorEna,                    
-      i_pixel_out_x          => videoout_request_clkvid.xpos,
-      i_pixel_out_y          => to_integer(videoout_request_clkvid.lineDisp),
+      i_pixel_out_x          => xpos_expand, -- videoout_request_clkvid.xpos,
+      i_pixel_out_y          => to_integer('0' & videoout_request_clkvid.lineDisp),
       o_pixel_out_data       => overlay_error_data,
       o_pixel_out_ena        => overlay_error_ena,
       textstring             => x"45" & errortext
@@ -474,8 +478,8 @@ begin
       clk                    => clkvid,
       ce                     => videoout_out.ce,
       ena                    => LBAOn,                    
-      i_pixel_out_x          => videoout_request_clkvid.xpos,
-      i_pixel_out_y          => to_integer(videoout_request_clkvid.lineDisp),
+      i_pixel_out_x          => xpos_expand, -- videoout_request_clkvid.xpos,
+      i_pixel_out_y          => to_integer('0' & videoout_request_clkvid.lineDisp),
       o_pixel_out_data       => overlay_lba_data,
       o_pixel_out_ena        => overlay_lba_ena,
       textstring             => lbatext
@@ -496,8 +500,8 @@ begin
       clk                    => clkvid,
       ce                     => videoout_out.ce,
       ena                    => debugmodeOn,                    
-      i_pixel_out_x          => videoout_request_clkvid.xpos,
-      i_pixel_out_y          => to_integer(videoout_request_clkvid.lineDisp),
+      i_pixel_out_x          => xpos_expand, -- videoout_request_clkvid.xpos,
+      i_pixel_out_y          => to_integer('0' & videoout_request_clkvid.lineDisp),
       o_pixel_out_data       => debugtextDbg_data,
       o_pixel_out_ena        => debugtextDbg_ena,
       textstring             => x"444247"
@@ -528,9 +532,9 @@ begin
       hblank         => videoout_out.hblank,
               
       xpos_cross     => Gun1X_screen,
-      ypos_cross     => to_integer(Gun1Y_screen),
+      ypos_cross     => to_integer('0' & Gun1Y_screen),
       xpos_screen    => videoout_request_clkvid.xpos,
-      ypos_screen    => to_integer(videoout_request_clkvid.lineDisp),
+      ypos_screen    => to_integer('0' & videoout_request_clkvid.lineDisp),
       
       out_ena        => overlay_Gun1_ena
    );
@@ -544,9 +548,9 @@ begin
       hblank         => videoout_out.hblank,
               
       xpos_cross     => Gun2X_screen,
-      ypos_cross     => to_integer(Gun2Y_screen),
+      ypos_cross     => to_integer('0' & Gun2Y_screen),
       xpos_screen    => videoout_request_clkvid.xpos,
-      ypos_screen    => to_integer(videoout_request_clkvid.lineDisp),
+      ypos_screen    => to_integer('0' & videoout_request_clkvid.lineDisp),
       
       out_ena        => overlay_Gun2_ena
    );
@@ -562,9 +566,9 @@ begin
 
       offscreen      => Gun1offscreen,
       xpos_gun       => Gun1X_screen,
-      ypos_gun       => to_integer(Gun1Y_screen),
+      ypos_gun       => to_integer('0' & Gun1Y_screen),
       xpos_screen    => videoout_request_clkvid.xpos,
-      ypos_screen    => to_integer(videoout_request_clkvid.lineDisp),
+      ypos_screen    => to_integer('0' & videoout_request_clkvid.lineDisp),
 
       out_irq10      => Gun1IRQ10
    );
@@ -580,9 +584,9 @@ begin
 
       offscreen      => Gun2offscreen,
       xpos_gun       => Gun2X_screen,
-      ypos_gun       => to_integer(Gun2Y_screen),
+      ypos_gun       => to_integer('0' & Gun2Y_screen),
       xpos_screen    => videoout_request_clkvid.xpos,
-      ypos_screen    => to_integer(videoout_request_clkvid.lineDisp),
+      ypos_screen    => to_integer('0' & videoout_request_clkvid.lineDisp),
 
       out_irq10      => Gun2IRQ10
    );

@@ -140,7 +140,7 @@ always_ff @(posedge clk) begin
 
 end
 
-always_ff @(clk3x) begin
+always_ff @(posedge clk3x) begin
 
     reg [26:0] addr_rotate;
     reg [7:0]  data [(2**27)-1:0];

@@ -1,8 +1,17 @@
-N:=cpu
+N:=cpu_top
 SRCDIR:=../rtl
 SIMDIR:= ../sim
 BUILDDIR:= build
 VERILATE_OUTDIR := obj_dir
+
+# cancel implicit rules for .vhd, .v, and .sv source files
+%.vhd : ;
+%.v : ;
+%.sv : ;
+
+VERILOG_SOURCES := \
+cpu_top.sv \
+$(SIMDIR)/system/src/tb/sdram_model3x.sv \
 
 VHDL_MEM_SRCS := \
 $(SRCDIR)/SyncFifo.vhd \
@@ -12,7 +21,8 @@ $(SRCDIR)/SyncRam.vhd \
 $(SRCDIR)/SyncRamDual.vhd \
 $(SRCDIR)/SyncRamDualNotPow2.vhd \
 $(SIMDIR)/system/src/mem/RamMLAB.vhd \
-$(SIMDIR)/system/src/mem/SyncRamDualByteEnable.vhd
+$(SIMDIR)/system/src/mem/SyncRamDualByteEnable.vhd \
+$(SIMDIR)/system/src/mem/dpram.vhd \
 
 # NOTES:
 # ghdl did not like the declared signal in pexport in file export.vhd
@@ -73,30 +83,61 @@ $(SRCDIR)/psx_top.vhd \
 $(SRCDIR)/psx_mister.vhd \
 $(SRCDIR)/spu_ram.vhd 
 
-# build: ./obj_dir/V$N
+VHDL_2_VERILOG_MODULES := \
+gpu
+# gpu_cpu2vram \
+# gpu_crosshair \
+# gpu_dither \
+# gpu_fillVram \
+# gpu_line \
+# gpu_overlay \
+# gpu_pixelpipeline \
+# gpu_rect \
+# gpu_videoout_async \
+# gpu_videoout_sync \
+# gpu_videoout \
+# gpu_vram2cpu \
+# gpu_vram2vram \
 
-# verilate: ./obj_dir/V$N.cpp
+# memctrl \
+# memorymux \
+# gte \
+# cpu \
+# mdec \
+# gpu
+
+GENERATED_VERILOG := $(VHDL_2_VERILOG_MODULES:%=$(BUILDDIR)/%.v)
+
+.PHONY: verilog verilate build ghdlimport trace clean
+
+verilog: $(GENERATED_VERILOG)
 
 verilate: $(VERILATE_OUTDIR)/V$(N).cpp
 
 build: $(VERILATE_OUTDIR)/V$(N)
 
-# $(BUILDDIR)/cpu.v $(SIMDIR)/system/src/tb/sdram_model3x.sv
+ghdlimport: $(BUILDDIR)/mem-obj08.cf $(BUILDDIR)/psx-obj08.cf
 
-ghdl: $(BUILDDIR)/cpu.v
-
-$(BUILDDIR)/cpu.v: $(VHDL_MEM_SRCS) $(VHDL_PSX_SRCS)
-	@echo "GHDL Import (-i)"
+$(BUILDDIR)/mem-obj08.cf: $(VHDL_MEM_SRCS)
+	@echo "GHDL Import (-i) for mem library"
 	$(shell mkdir -p $(BUILDDIR))
 	ghdl -i --std=08 --work=mem --workdir=$(BUILDDIR) -P$(BUILDDIR) $(VHDL_MEM_SRCS)
+
+$(BUILDDIR)/psx-obj08.cf: $(VHDL_PSX_SRCS)
+	@echo "GHDL Import (-i) for psx library"
+	$(shell mkdir -p $(BUILDDIR))
 	ghdl -i --std=08 --work=psx --workdir=$(BUILDDIR) -P$(BUILDDIR) $(VHDL_PSX_SRCS)
-	ghdl -m --std=08 --work=psx --workdir=$(BUILDDIR) -P$(BUILDDIR) -frelaxed cpu
-	ghdl synth --std=08 --work=psx --workdir=$(BUILDDIR) -P$(BUILDDIR) -frelaxed --out=verilog cpu > $(BUILDDIR)/cpu.v
 
-$(VERILATE_OUTDIR)/V$(N).cpp: $(BUILDDIR)/cpu.v  sim_main.cpp
-	verilator --top-module $(N) --trace-fst -cc -O3 --exe $< sim_main.cpp
+$(GENERATED_VERILOG): $(BUILDDIR)/mem-obj08.cf $(BUILDDIR)/psx-obj08.cf
+	@echo "GHDL Make (-m) for $@"
+	ghdl -m --std=08 --work=psx --workdir=$(BUILDDIR) -P$(BUILDDIR) -frelaxed $(basename $(notdir $@))
+	@echo "GHDL Synth to Verilog for $@"
+	ghdl synth --std=08 --work=psx --workdir=$(BUILDDIR) -P$(BUILDDIR) -frelaxed --out=verilog -o=$@ $(basename $(notdir $@)) 
 
-$(VERILATE_OUTDIR)/V$(N): $(VERILATE_OUTDIR)/V$(N).cpp  sim_main.cpp
+$(VERILATE_OUTDIR)/V$(N).cpp: $(GENERATED_VERILOG) $(VERILOG_SOURCES) sim_main.cpp
+	verilator --top-module $(N) --trace-fst -cc -O3 --exe $^
+
+$(VERILATE_OUTDIR)/V$(N): $(VERILATE_OUTDIR)/V$(N).cpp
 	make -C obj_dir -f V$N.mk V$N
 	
 # ./obj_dir/V$N.cpp: sim_main.cpp $(SRCS) $(DEPS)
@@ -119,10 +160,10 @@ $(VERILATE_OUTDIR)/V$(N): $(VERILATE_OUTDIR)/V$(N).cpp  sim_main.cpp
 # 	@echo "### SIMULATION (GUI) ###"
 # 	@cd obj_dir && ./V$N -c 400000000
 
-# trace: ./obj_dir/V$N
-# 	@echo
-# 	@echo "### SIMULATION (trace) ###"
-# 	@cd obj_dir && ./V$N -t -c 100000000 2> stderr.log
+trace: $(VERILATE_OUTDIR)/V$N
+	@echo
+	@echo "### SIMULATION (trace) ###"
+	@cd $(VERILATE_OUTDIR) && ./V$N -t -c 100000000 2> stderr.log
 
 # trace2: ./obj_dir/V$N
 # 	@echo

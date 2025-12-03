@@ -232,8 +232,10 @@ architecture arch of gpu is
    signal pixel64timeout            : integer range 0 to 15;
       
    -- workers  
-   type t_div_array is array(0 to 5) of div_type;
-   signal div_array                 : t_div_array;
+   type t_div_cmd_array is array(0 to 5) of div_type_cmd;
+   type t_div_result_array is array(0 to 5) of div_type_result;
+   signal div_cmd_array             : t_div_cmd_array;
+   signal div_result_array          : t_div_result_array;
    
    signal vramFill_requestFifo      : std_logic; 
    signal vramFill_done             : std_logic; 
@@ -279,7 +281,8 @@ architecture arch of gpu is
    signal line_requestFifo          : std_logic; 
    signal line_done                 : std_logic;
    --signal line_CmdDone              : std_logic;
-   signal line_div                  : t_div_array;
+   signal line_div_cmd              : t_div_cmd_array;
+   signal line_div_result           : t_div_result_array;
    signal line_pipeline_new         : std_logic;
    signal line_pipeline_transparent : std_logic;
    signal line_pipeline_x           : unsigned(9 downto 0);
@@ -321,7 +324,8 @@ architecture arch of gpu is
    signal poly_requestFifo          : std_logic; 
    signal poly_done                 : std_logic;
    --signal poly_CmdDone              : std_logic;
-   signal poly_div                  : t_div_array;
+   signal poly_div_cmd              : t_div_cmd_array;
+   signal poly_div_result           : t_div_result_array;
    signal poly_pipeline_new         : std_logic;
    signal poly_pipeline_texture     : std_logic;
    signal poly_pipeline_transparent : std_logic;
@@ -1182,12 +1186,19 @@ begin
       drawingAreaTop       => drawingAreaTop,   
       drawingAreaBottom    => drawingAreaBottom,
       
-      div1                 => line_div(0), 
-      div2                 => line_div(1), 
-      div3                 => line_div(2), 
-      div4                 => line_div(3), 
-      div5                 => line_div(4), 
-      div6                 => line_div(5), 
+      div1_cmd             => line_div_cmd(0), 
+      div2_cmd             => line_div_cmd(1), 
+      div3_cmd             => line_div_cmd(2), 
+      div4_cmd             => line_div_cmd(3), 
+      div5_cmd             => line_div_cmd(4), 
+      div6_cmd             => line_div_cmd(5), 
+      
+      div1_res             => line_div_result(0), 
+      div2_res             => line_div_result(1), 
+      div3_res             => line_div_result(2), 
+      div4_res             => line_div_result(3), 
+      div5_res             => line_div_result(4), 
+      div6_res             => line_div_result(5), 
       
       fifoOut_idle         => fifoOut_idle,
       pipeline_busy        => pipeline_busy,
@@ -1306,12 +1317,18 @@ begin
       drawModeNew          => poly_drawModeNew,
       drawmode_dithering   => drawMode(9),
       
-      div1                 => poly_div(0), 
-      div2                 => poly_div(1), 
-      div3                 => poly_div(2), 
-      div4                 => poly_div(3), 
-      div5                 => poly_div(4), 
-      div6                 => poly_div(5), 
+      div1_cmd             => poly_div_cmd(0), 
+      div2_cmd             => poly_div_cmd(1), 
+      div3_cmd             => poly_div_cmd(2), 
+      div4_cmd             => poly_div_cmd(3), 
+      div5_cmd             => poly_div_cmd(4), 
+      div6_cmd             => poly_div_cmd(5), 
+      div1_res             => poly_div_result(0), 
+      div2_res             => poly_div_result(1), 
+      div3_res             => poly_div_result(2), 
+      div4_res             => poly_div_result(3), 
+      div5_res             => poly_div_result(4), 
+      div6_res             => poly_div_result(5), 
       
       fifoOut_idle         => fifoOut_idle,
       pipeline_busy        => pipeline_busy,
@@ -1446,28 +1463,28 @@ begin
    gdividers: for i in 0 to 5 generate
    begin
    
-      div_array(i).start    <= line_div(i).start    or poly_div(i).start;
-      div_array(i).dividend <= line_div(i).dividend or poly_div(i).dividend;
-      div_array(i).divisor  <= line_div(i).divisor  or poly_div(i).divisor;
+      div_cmd_array(i).start    <= line_div_cmd(i).start    or poly_div_cmd(i).start;
+      div_cmd_array(i).dividend <= line_div_cmd(i).dividend or poly_div_cmd(i).dividend;
+      div_cmd_array(i).divisor  <= line_div_cmd(i).divisor  or poly_div_cmd(i).divisor;
       
-      line_div(i).done      <= div_array(i).done;     
-      line_div(i).quotient  <= div_array(i).quotient; 
-      line_div(i).remainder <= div_array(i).remainder;
+      line_div_result(i).done      <= div_result_array(i).done;     
+      line_div_result(i).quotient  <= div_result_array(i).quotient; 
+      line_div_result(i).remainder <= div_result_array(i).remainder;
       
-      poly_div(i).done      <= div_array(i).done;     
-      poly_div(i).quotient  <= div_array(i).quotient; 
-      poly_div(i).remainder <= div_array(i).remainder;
+      poly_div_result(i).done      <= div_result_array(i).done;     
+      poly_div_result(i).quotient  <= div_result_array(i).quotient; 
+      poly_div_result(i).remainder <= div_result_array(i).remainder;
       
       idivider : entity work.divider
       port map
       (
          clk       => clk2x,      
-         start     => div_array(i).start,
-         done      => div_array(i).done,          
-         dividend  => div_array(i).dividend, 
-         divisor   => div_array(i).divisor,  
-         quotient  => div_array(i).quotient, 
-         remainder => div_array(i).remainder
+         start     => div_cmd_array(i).start,
+         done      => div_result_array(i).done,          
+         dividend  => div_cmd_array(i).dividend, 
+         divisor   => div_cmd_array(i).divisor,  
+         quotient  => div_result_array(i).quotient, 
+         remainder => div_result_array(i).remainder
       );
    end generate;
    
@@ -2028,10 +2045,10 @@ begin
          variable line_out : line;
       begin
    
-         file_open(f_status, outfile, "R:\\debug_gpufifo_sim.txt", write_mode);
+         file_open(f_status, outfile, "debug_gpufifo_sim.txt", write_mode);
          file_close(outfile);
          
-         file_open(f_status, outfile, "R:\\debug_gpufifo_sim.txt", append_mode);
+         file_open(f_status, outfile, "debug_gpufifo_sim.txt", append_mode);
          
          while (true) loop
             
@@ -2069,10 +2086,10 @@ begin
          variable line_out : line;
       begin
    
-         file_open(f_status, outfile, "R:\\debug_pixel_sim.txt", write_mode);
+         file_open(f_status, outfile, "debug_pixel_sim.txt", write_mode);
          file_close(outfile);
          
-         file_open(f_status, outfile, "R:\\debug_pixel_sim.txt", append_mode);
+         file_open(f_status, outfile, "debug_pixel_sim.txt", append_mode);
          
          while (true) loop
             

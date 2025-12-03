@@ -9,10 +9,10 @@ entity divider is
       start     : in  std_logic;
       done      : out std_logic := '0';
       busy      : out std_logic := '0';
-      dividend  : in  signed;
-      divisor   : in  signed;
-      quotient  : out signed;
-      remainder : out signed
+      dividend  : in  signed(44 downto 0);
+      divisor   : in  signed(24 downto 0);
+      quotient  : out signed(44 downto 0);
+      remainder : out signed(24 downto 0)
    );
 end entity;
 
