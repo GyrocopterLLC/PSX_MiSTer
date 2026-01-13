@@ -1,11 +1,14 @@
 import struct
 import re
 
+fileprefix = "ramdump_bios_to_shell"
+filepath = "psx_mister\\cocotb\\"
+
 ramdat = bytearray()
 
 linere = re.compile('([0-9a-fA-F]{8}):\\s+([0-9a-fA-F]{8}),\\s+([0-9a-fA-F]{8}),\\s+([0-9a-fA-F]{8}),\\s+([0-9a-fA-F]{8})')
 
-with open('psx_mister/cocotb/ramdump_bios_4sec.txt','r') as fil:
+with open(filepath+fileprefix+".txt",'r') as fil:
     for lines in fil.readlines():
         vals = linere.search(lines)
         if vals:
@@ -14,5 +17,5 @@ with open('psx_mister/cocotb/ramdump_bios_4sec.txt','r') as fil:
             newbytes = struct.pack('<IIII',*vals_ints)
             ramdat.extend(newbytes)
 
-with open('psx_mister/cocotb/ramdump_bios_4sec.bin','wb') as filo:
+with open(filepath+fileprefix+".bin",'wb') as filo:
     filo.write(ramdat)

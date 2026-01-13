@@ -63,7 +63,7 @@ async def frame_saver(dut):
                 if vidy >= 240:
                     # frame done!
                     dut._log.info('Frame done!')
-                    cv2.imwrite(f'frame_{frame_num:03}.jpg', np.transpose(vid_dat, axes=(1,0,2)))
+                    cv2.imwrite(f'frame_error_{frame_num:03}.jpg', np.transpose(vid_dat, axes=(1,0,2)))
                     vid_dat[:] = 0
                     frame_num += 1
                     vidy = 0
@@ -71,7 +71,7 @@ async def frame_saver(dut):
             if vidx != 0 or vidy != 0:
                 if dut.video_vsync.value == 1:
                     dut._log.info('Early frame write')
-                    cv2.imwrite(f'frame_{frame_num:03}.jpg', np.transpose(vid_dat, axes=(1,0,2)))
+                    cv2.imwrite(f'frame_error_{frame_num:03}.jpg', np.transpose(vid_dat, axes=(1,0,2)))
                     vid_dat[:] = 0
                     frame_num += 1
                     vidx = 0
@@ -171,7 +171,7 @@ async def test_gpu(dut):
 
     cocotb.start_soon(start_clocks(dut))
 
-    ddram_model = ddr_model()
+    ddram_model = ddr_model(randomize=False)
     cocotb.start_soon(ddram_model.run(dut))
     cocotb.start_soon(frame_saver(dut))
     cocotb.start_soon(hsync_talker(dut))
@@ -203,3 +203,5 @@ async def test_gpu(dut):
     quit_all_coro = True
     ddram_model.destroy()
 
+    ddram_model.dump_ram("vram_dump_error.txt")
+    dut._log.info(f"total bytes written = {ddram_model.bytes_written}")

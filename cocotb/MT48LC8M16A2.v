@@ -49,7 +49,7 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     parameter addr_bits =      13;
     parameter data_bits =      16;
     parameter col_bits  =       9;
-    parameter mem_sizes = 2097151;                                  // 2 Meg
+    parameter mem_sizes = 4194303;                                  // 4 Meg
  
     input     [data_bits - 1 : 0] dq_in;
     output    [data_bits - 1 : 0] dq_out;
@@ -82,13 +82,13 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     reg                           Pc_b0, Pc_b1, Pc_b2, Pc_b3;       // Bank Precharge
  
     reg                   [1 : 0] Bank_precharge     [0 : 3];       // Precharge Command
-    reg                           A10_precharge      [0 : 3];       // addr[10] = 1 (All banks)
-    reg                           Auto_precharge     [0 : 3];       // RW AutoPrecharge (Bank)
-    reg                           Read_precharge     [0 : 3];       // R  AutoPrecharge
-    reg                           Write_precharge    [0 : 3];       //  W AutoPrecharge
+    reg                   [0 : 3] A10_precharge      ;       // addr[10] = 1 (All banks)
+    reg                   [0 : 3] Auto_precharge     ;       // RW AutoPrecharge (Bank)
+    reg                   [0 : 3] Read_precharge     ;       // R  AutoPrecharge
+    reg                   [0 : 3] Write_precharge    ;       //  W AutoPrecharge
     integer                       Count_precharge    [0 : 3];       // RW AutoPrecharge (Counter)
-    reg                           RW_interrupt_read  [0 : 3];       // RW Interrupt Read with Auto Precharge
-    reg                           RW_interrupt_write [0 : 3];       // RW Interrupt Write with Auto Precharge
+    reg                   [0 : 3] RW_interrupt_read  ;       // RW Interrupt Read with Auto Precharge
+    reg                   [0 : 3] RW_interrupt_write ;       // RW Interrupt Write with Auto Precharge
  
     reg                           Data_in_enable;
     reg                           Data_out_enable;
@@ -140,18 +140,31 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     `define   LMR       9
  
     // Timing Parameters for -75 (PC133) and CAS Latency = 2
-    parameter tAC  =   6.0;
-    parameter tHZ  =   7.0;
-    parameter tOH  =   2.7;
-    parameter tMRD =   2.0;     // 2 clk Cycles
-    parameter tRAS =  44.0;
-    parameter tRC  =  66.0;
-    parameter tRCD =  20.0;
-    parameter tRP  =  20.0;
-    parameter tRRD =  15.0;
-    parameter tWRa =   7.5;     // A2 Version - Auto precharge mode only (1 clk + 7.5 ns)
-    parameter tWRp =  15.0;     // A2 Version - Precharge mode only (15 ns)
+    // parameter tAC  =   6.0;
+    // parameter tHZ  =   7.0;
+    // parameter tOH  =   2.7;
+    // parameter tMRD =   2.0;     // 2 clk Cycles
+    // parameter tRAS =  44.0;
+    // parameter tRC  =  66.0;
+    // parameter tRCD =  20.0;
+    // parameter tRP  =  20.0;
+    // parameter tRRD =  15.0;
+    // parameter tWRa =   7.5;     // A2 Version - Auto precharge mode only (1 clk + 7.5 ns)
+    // parameter tWRp =  15.0;     // A2 Version - Precharge mode only (15 ns)
  
+    // Timing parameters for -6 (PC166) and CAS latency = 2
+    parameter tAC  =   6.0;
+    parameter tHZ  =   6.0;
+    parameter tOH  =   3.0;
+    parameter tMRD =   2.0;     // 2 clk Cycles
+    parameter tRAS =  42.0;
+    parameter tRC  =  60.0;
+    parameter tRCD =  15.0;
+    parameter tRP  =  15.0;
+    parameter tRRD =  12.0;     // 2x tCLK
+    parameter tWRa =   7.5;     // A2 Version - Auto precharge mode only (1 clk + 7.5 ns)
+    parameter tWRp =  12.0;     // A2 Version - Precharge mode only (15 ns)
+
     // Timing Check variable
     integer   MRD_chk;
     integer   WR_counter [0 : 3];
@@ -804,7 +817,7 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     //       or 3.  Interrupt by a Read or Write (with or without AutoPrecharge)
     always @ (WR_counter[0]) begin
         if ((Auto_precharge[0] == 1'b1) && (Write_precharge[0] == 1'b1)) begin
-            if ((($time - RAS_chk0 >= tRAS) &&                                                          // Case 2
+            if ((($time - RAS_chk0 >= (tRAS - tWRa)) &&                                                          // Case 2
                (((Burst_length_1 == 1'b1 || Write_burst_mode == 1'b1) && Count_precharge [0] >= 1) ||   // Case 1
                  (Burst_length_2 == 1'b1 && Count_precharge [0] >= 2) ||
                  (Burst_length_4 == 1'b1 && Count_precharge [0] >= 4) ||
@@ -823,7 +836,7 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     end
     always @ (WR_counter[1]) begin
         if ((Auto_precharge[1] == 1'b1) && (Write_precharge[1] == 1'b1)) begin
-            if ((($time - RAS_chk1 >= tRAS) &&
+            if ((($time - RAS_chk1 >= (tRAS - tWRa)) &&
                (((Burst_length_1 == 1'b1 || Write_burst_mode == 1'b1) && Count_precharge [1] >= 1) || 
                  (Burst_length_2 == 1'b1 && Count_precharge [1] >= 2) ||
                  (Burst_length_4 == 1'b1 && Count_precharge [1] >= 4) ||
@@ -842,7 +855,7 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     end
     always @ (WR_counter[2]) begin
         if ((Auto_precharge[2] == 1'b1) && (Write_precharge[2] == 1'b1)) begin
-            if ((($time - RAS_chk2 >= tRAS) &&
+            if ((($time - RAS_chk2 >= (tRAS - tWRa)) &&
                (((Burst_length_1 == 1'b1 || Write_burst_mode == 1'b1) && Count_precharge [2] >= 1) || 
                  (Burst_length_2 == 1'b1 && Count_precharge [2] >= 2) ||
                  (Burst_length_4 == 1'b1 && Count_precharge [2] >= 4) ||
@@ -861,7 +874,7 @@ module MT48LC8M16A2 (dq_in, dq_out, addr, ba, clk, cke, csb, rasb, casb, web, dq
     end
     always @ (WR_counter[3]) begin
         if ((Auto_precharge[3] == 1'b1) && (Write_precharge[3] == 1'b1)) begin
-            if ((($time - RAS_chk3 >= tRAS) &&
+            if ((($time - RAS_chk3 >= (tRAS - tWRa)) &&
                (((Burst_length_1 == 1'b1 || Write_burst_mode == 1'b1) && Count_precharge [3] >= 1) || 
                  (Burst_length_2 == 1'b1 && Count_precharge [3] >= 2) ||
                  (Burst_length_4 == 1'b1 && Count_precharge [3] >= 4) ||

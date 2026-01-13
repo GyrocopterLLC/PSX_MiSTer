@@ -36,3 +36,8 @@ c5_pin_model_dump.txt
 *~
 *.xml
 *.cdf
+cocotb/__pycache__/*
+cocotb/sim_build/*
+cocotb/*.fst
+cocotb/results.xml
+cocotb/*.gtkw

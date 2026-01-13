@@ -1,5 +1,5 @@
 from cocotb.triggers import RisingEdge, ClockCycles, Timer
-from random import getrandbits
+from random import getrandbits, randint
 
 '''
 GPU ports:
@@ -32,11 +32,25 @@ GPU ports:
 # WE - write data is valid this cycle. Can start a write when not in the middle of a burst already
 
 class ddr_model:
-    def __init__(self):
+    def __init__(self, randomize = True):
         self.quit_now = False
         self.slow_timing = 15
         self.first_time = True # write all the vram on the first read
-        self.data = [getrandbits(32) for _ in range(2**20)]
+        self.data = [getrandbits(32) for _ in range(2**20)] if randomize else [0xFFFFFFFF for _ in range(2**20)]
+
+        self.bytes_written = 0
+
+
+    def dump_ram(self, filename):
+        with open(filename, 'w') as fil:
+            i = 0
+            while i < len(self.data):
+                fil.write(f"{4*i:08X}: ")
+                for j in range(4):
+                    fil.write(f"{self.data[i+j]:08X}, ")
+                fil.write('\n')
+                i = i + 4
+
 
     def destroy(self):
         self.quit_now = True 
@@ -60,20 +74,28 @@ class ddr_model:
                         data_in_low = dut.vram_DIN.value[31:0].to_unsigned()
                         if (be & 0xF0) == 0xF0:
                             self.data[addr + (2*i) + 1] = data_in_high
+                            self.bytes_written = self.bytes_written + 4
                         elif (be & 0xF0) == 0xC0:
                             self.data[addr + (2*i) + 1] = (data_in_high & 0xFFFF0000) | (self.data[addr + (2*i) + 1] & 0x0000FFFF)
+                            self.bytes_written = self.bytes_written + 2
                         elif (be & 0xF0) == 0x30:
                             self.data[addr + (2*i) + 1] = (data_in_high & 0x0000FFFF) | (self.data[addr + (2*i) + 1] & 0xFFFF0000)
+                            self.bytes_written = self.bytes_written + 2
 
                         if (be & 0x0F) == 0x0F:
                             self.data[addr + (2*i)] = data_in_low
+                            self.bytes_written = self.bytes_written + 4
                         elif (be & 0x0F) == 0x0C:
                             self.data[addr + (2*i)] = (data_in_low & 0xFFFF0000) | (self.data[addr + (2*i) + 1] & 0x0000FFFF)
+                            self.bytes_written = self.bytes_written + 2
                         elif (be & 0x0F) == 0x03:
                             self.data[addr + (2*i)] = (data_in_low & 0x0000FFFF) | (self.data[addr + (2*i) + 1] & 0xFFFF0000)
+                            self.bytes_written = self.bytes_written + 2
 
                         i += 1
                     await RisingEdge(dut.clk2x)
+                    # await ClockCycles(dut.clk2x, randint(7,22))
+                    # await ClockCycles(dut.clk2x, 24)
                 dut.vram_BUSY.value = 0
 
             if dut.vram_RD.value == 1:

@@ -1,5 +1,5 @@
 import cocotb
-from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, Timer
+from cocotb.triggers import RisingEdge, FallingEdge, ClockCycles, Timer, ValueChange
 from cocotb.clock import Clock
 from cocotb.simtime import get_sim_time
 import math
@@ -8,6 +8,12 @@ import cv2
 import struct
 
 quit_all_coro = False
+
+initial_PC = 0x80030000
+initial_SP = 0x801FFDE0
+initial_FP = 0x801FFF00
+initial_GP = 0xA0010FF0
+initial_RA = 0xBFC07014
 
 class FakeRam:
     def __init__(self):
@@ -19,11 +25,20 @@ class FakeRam:
     def load_bios(self, filename):
         with open(filename, 'rb') as fil:
             fileContent = fil.read()
-            if len(fileContent) > 0x80000:
+            if len(fileContent) > 0x80000: # can't be more than 512kB
                 assert(False)
             
             endpos = (len(fileContent)+3)//4
             self.bios[:endpos] = struct.unpack("<"+"i"*(len(fileContent)//4), fileContent)
+
+    def load_ram(self, filename):
+        with open(filename, 'rb') as fil:
+            fileContent = fil.read()
+            if len(fileContent) > 0x200000: # can't be more than 2MB
+                assert(False)
+            
+            endpos = (len(fileContent)+3) // 4
+            self.ram[:endpos] = struct.unpack("<" + "i"*(len(fileContent)//4), fileContent)
 
     def load_exe(self, filename, offset):
         with open(filename, 'rb') as fil:
@@ -216,6 +231,16 @@ async def show_ticks(dut):
         await Timer(1000,'us')
         dut._log.info(f"Elapsed: {get_sim_time('us')} us")
 
+async def ss_load_reg(dut, regnum, regval):
+    dut.icpu.SS_DataWrite.value = regval
+    dut.icpu.SS_wren_CPU.value = 1
+    dut.icpu.SS_Adr.value = 96 + regnum
+    await RisingEdge(dut.clk1x)
+    dut.icpu.SS_DataWrite.value = 0
+    dut.icpu.SS_wren_CPU.value = 0
+    dut.icpu.SS_Adr.value = 0
+    await RisingEdge(dut.clk1x)
+
 @cocotb.test()
 async def test_cpu(dut):
     global quit_all_coro
@@ -228,7 +253,8 @@ async def test_cpu(dut):
     # load BIOS
     fakeram = FakeRam()
     fakeram.load_bios(r"../../../psx/bios/ps-30a.bin")
-    # fakeram.load_exe(r"/mnt/c/Users/david/Desktop/code-in-io.bin", 0x10000)
+    fakeram.load_ram(r"ramdump_bios_to_shell.bin") # completely fills ram, equivalent to running bios to shell start
+    # fakeram.load_exe(r"/mnt/c/Users/david/Desktop/code-in-io.bin", 0x10000) # overwrite a section with our compiled test executable
     # dut._log.info(f"bios length: {len(fakeram.bios)}")
     # dut._log.info(f"first word: {fakeram.bios[0]:08X}")
     cocotb.start_soon(fakeram.memory_listener(dut))
@@ -238,22 +264,27 @@ async def test_cpu(dut):
     dut.SS_reset.value = 1
     await ClockCycles(dut.clk1x, 10)
     dut.SS_reset.value = 0
-    # dut.icpu.PC.value = 0x80011684
+    if initial_PC is not None:
+        dut.icpu.PC.value = initial_PC
     await ClockCycles(dut.clk1x, 40)
     dut.reset_intern.value = 0
     
     await ClockCycles(dut.clk1x, 10)
-    # dut.icpu.SS_DataWrite.value = 0x801FFF00 # initial stack pointer
-    # dut.icpu.SS_wren_CPU.value = 1
-    # dut.icpu.SS_Adr.value = 96 + 29 # reg 29 = sp
-    # await RisingEdge(dut.clk1x)
-    # dut.icpu.SS_DataWrite.value = 0
-    # dut.icpu.SS_wren_CPU.value = 0
-    # dut.icpu.SS_Adr.value = 0
+
+    if initial_GP is not None:
+        await ss_load_reg(dut, 28, initial_GP)
+    if initial_SP is not None:
+        await ss_load_reg(dut, 29, initial_SP)
+    if initial_FP is not None:
+        await ss_load_reg(dut, 30, initial_FP)
+    if initial_RA is not None:
+        await ss_load_reg(dut, 31, initial_RA)
 
     dut.ce.value = 1
-    # await ClockCycles(dut.clk1x, 100000)
-    await Timer(4000, 'ms')
+    await ClockCycles(dut.clk1x, 1000)
+
+    # await ClockCycles(dut.clk1x, 1000000)
+    
 
     fakeram.dump_ram("ramdump.txt")
 
